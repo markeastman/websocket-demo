@@ -1,0 +1,168 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.jboss.eap.xp.quickstarts</groupId>
+        <artifactId>quickstart-parent</artifactId>
+        <version>1.0.1.GA</version>
+    </parent>
+
+    <artifactId>websocket-demo</artifactId>
+    <packaging>war</packaging>
+
+    <name>websocket-demo</name>
+
+    <properties>
+        <version.glassfish.json>1.1.6</version.glassfish.json>
+        <!-- would be different value for XP2.0 and WildFly -->
+        <version.server.bootable-jar>20.0.1.Final</version.server.bootable-jar>
+        <!-- would be 2.0.0.Final for WF 21 and XP 2.0 -->
+        <version.wildfly-jar.maven.plugin>2.0.0.Beta1</version.wildfly-jar.maven.plugin>
+        <!-- to be replaced with RC1 then with GA release -->
+        <version.jkube.maven.plugin>1.0.0-rc-1</version.jkube.maven.plugin>
+        <!-- not needed for WildFly, for XP 2.0, need a supported redhat builder image. Could be JDK8 or JDK11, us to choose -->
+        <jkube.generator.from>registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift:latest</jkube.generator.from>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.jboss.bom</groupId>
+                <artifactId>jboss-eap-jakartaee8-with-tools</artifactId>
+                <version>${version.server.bom}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.jboss.bom</groupId>
+                <artifactId>jboss-eap-xp-microprofile</artifactId>
+                <version>${version.microprofile.bom}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.spec.javax.annotation</groupId>
+            <artifactId>jboss-annotations-api_1.3_spec</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.spec.javax.websocket</groupId>
+            <artifactId>jboss-websocket-api_1.1_spec</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <!-- Set the name of the archive -->
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>bootable-jar</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-jar-maven-plugin</artifactId>
+                        <version>${version.wildfly-jar.maven.plugin}</version>
+                        <configuration>
+                            <feature-pack-location>wildfly@maven(org.jboss.universe:community-universe)#${version.server.bootable-jar}</feature-pack-location>
+                            <layers>
+                                <layer>jaxrs-server</layer>
+                                <!-- would be microprofile-platform for XP 2.0 and WF21 -->
+                                <layer>observability</layer>
+                                <layer>microprofile-jwt</layer>
+                            </layers>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>package</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>bootable-jar-openshift</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-jar-maven-plugin</artifactId>
+                        <version>${version.wildfly-jar.maven.plugin}</version>
+                        <configuration>
+                            <!-- would be something like org.jboss.eap:wildfly-galleon-pack:${version.wildfly} for XP 2.0 -->
+                            <feature-pack-location>wildfly@maven(org.jboss.universe:community-universe)#${version.server.bootable-jar}</feature-pack-location>
+                            <layers>
+                                <layer>jaxrs-server</layer>
+                                <!-- would be microprofile-platform for XP 2.0 and WF21 -->
+                                <layer>observability</layer>
+                                <layer>microprofile-jwt</layer>
+                            </layers>
+                            <cloud/>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>package</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.eclipse.jkube</groupId>
+                        <artifactId>openshift-maven-plugin</artifactId>
+                        <version>${version.jkube.maven.plugin}</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>resource</goal>
+                                    <goal>build</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <enricher>
+                                <config>
+                                    <jkube-service>
+                                        <type>NodePort</type>
+                                    </jkube-service>
+                                </config>
+                            </enricher>
+                            <resources>
+                                <env>
+                                    <JAVA_OPTIONS>-Djava.net.preferIPv4Stack=true</JAVA_OPTIONS>
+                                </env>
+                            </resources>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
