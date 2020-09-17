@@ -69,7 +69,7 @@ public class BidWebSocketEndpoint {
     // remove the session after it's closed
     @OnClose
     public void onClose(Session session) {
-        logger.info("Websoket session closed: " + session.getId());
+        logger.info("Websocket session closed: " + session.getId());
         clients.remove(session);
     }
 
